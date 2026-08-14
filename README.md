@@ -1,76 +1,86 @@
-# 🎲 Jogar Dado - AWS Lambda
+# Checkpoint 1 - Função Serverless na Nuvem
 
-Função serverless em Python que simula o lançamento de um dado (1-6), exposta via HTTP com AWS Lambda Function URL.
+Este projeto contém uma função serverless simples, escrita em Python, que responde a requisições HTTP e foi implantada em ambiente de nuvem.
 
-## Stack
-- Python 3.12
-- AWS Lambda
-- Function URL (auth: AWS_IAM)
+## Provedor Utilizado
 
-## Como funciona
+* AWS (Lambda + Function URL)
 
-`dado.py` recebe um evento do Lambda, sorteia um número de 1 a 6 e retorna:
+## Sobre a função
 
-```json
-{"statusCode": 200, "body": "{\"resultado\": 4}"}
-```
+A função (`dado.py`) simula o lançamento de um dado, sorteando um número entre 1 e 6, e retorna o resultado em formato JSON via HTTP.
 
-## Deploy
+## Como rodar/testar localmente
 
-```bash
-# 1. Empacotar
+### Pré-requisitos
+
+* Python 3.12 instalado
+* AWS CLI instalado e configurado (`aws configure`)
+* Terminal de comandos aberto
+
+### Passo a passo
+
+1. Clone o repositório:
+
+git clone https://github.com/LucasVitor03/jogar-dado-lambda
+
+2. Entre na pasta do projeto:
+
+cd pucprojeto
+
+## Na AWS
+
+### 1. Empacotar o código
+
 zip -j function.zip dado.py
 
-# 2. Criar a função (troque o ARN pela sua role)
-aws lambda create-function \
-  --function-name jogar-dado \
-  --runtime python3.12 \
-  --handler dado.handler \
-  --zip-file fileb://function.zip \
-  --role <ARN_DA_ROLE>
+### 2. Criar a função Lambda
 
-# 3. Criar a Function URL
-aws lambda create-function-url-config \
-  --function-name jogar-dado \
-  --auth-type AWS_IAM
+aws lambda create-function
+--function-name jogar-dado
+--runtime python3.12
+--handler dado.handler
+--zip-file fileb://function.zip
+--role <ARN_DA_ROLE>
 
-# 4. Dar permissão de invocação
-aws lambda add-permission \
-  --function-name jogar-dado \
-  --statement-id AllowMyUserInvoke \
-  --action lambda:InvokeFunctionUrl \
-  --principal "<SEU_ARN>" \
-  --function-url-auth-type AWS_IAM
-```
+### 3. Criar a Function URL (endpoint HTTP público)
 
-## Como testar
+aws lambda create-function-url-config
+--function-name jogar-dado
+--auth-type AWS_IAM
 
-![Console AWS:](assets/teste-console.png)
+### 4. Dar permissão de invocação
 
-**Console AWS:** Lambda → Functions → `jogar-dado` → aba Test → Create new event → Test
+aws lambda add-permission
+--function-name jogar-dado
+--statement-id AllowMyUserInvoke
+--action lambda:InvokeFunctionUrl
+--principal "<SEU_ARN>"
+--function-url-auth-type AWS_IAM
 
-![CLI AWS:](assets/test-cli.png)
+## Como testar a função já implantada
 
-**CLI (invoke direto):** ```bash aws lambda invoke --function-name jogar-dado --payload '{}' \
-  --cli-binary-format raw-in-base64-out response.json
+**Via Console AWS:** 
+
+Lambda → Functions → `jogar-dado` → aba Test → Create new event → Test
+
+**Via CLI (invoke direto):**
+
+aws lambda invoke --function-name jogar-dado --payload '{}'
+--cli-binary-format raw-in-base64-out response.json
 cat response.json
+
+**Resposta esperada:**
+```json
+{"resultado": 4}
 ```
 
-**CLI (via HTTP assinado):**
-```bash
-FUNCTION_URL=$(aws lambda get-function-url-config --function-name jogar-dado --query "FunctionUrl" --output text)
-curl "$FUNCTION_URL" \
-  --user "$(aws configure get aws_access_key_id):$(aws configure get aws_secret_access_key)" \
-  --aws-sigv4 "aws:amz:us-east-1:lambda"
-```
+## Prints da implantação
 
-## Atualizar o código
+![Teste no Console AWS](assets/teste-console.png)
+![Teste via CLI](assets/teste-cli.png)
 
-```bash
-zip -j function.zip dado.py
-aws lambda update-function-code --function-name jogar-dado --zip-file fileb://function.zip
-```
+## Observações técnicas
 
-## Por que AWS_IAM em vez de acesso público?
-
-O ambiente de laboratório (AWS Academy/Vocareum) bloqueia acesso anônimo via política de organização, mesmo com a permissão de recurso liberada. `AWS_IAM` exige requisição assinada e contorna essa restrição.
+* Foi usado **Function URL** ao invés de API Gateway, por ser uma única função sem necessidade de múltiplas rotas.
+* A autenticação é **AWS_IAM** (não pública/anônima) porque o ambiente de laboratório usado (AWS Academy/Vocareum) bloqueia acesso público anônimo por política de organização, mesmo com a permissão de recurso liberada.
